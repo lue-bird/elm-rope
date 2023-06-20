@@ -1,5 +1,5 @@
-module Rope exposing
-    ( Rope
+module Rope.Local exposing
+    ( Rope(..)
     , empty, singleton, append, prepend, fromList
     , map, indexedMap, foldl, foldr, filter, filterMap, toList
     , length, reverse, member, all, any, maximum, minimum, sum, product
@@ -7,7 +7,7 @@ module Rope exposing
     , isEmpty
     )
 
-{-|
+{-| The exact same as `Rope` but with locally exposed variants.
 
 
 # Types
