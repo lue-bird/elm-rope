@@ -41,7 +41,8 @@ module Rope exposing
 
 -}
 
-import ListFilled exposing (ListFilled)
+import ListFilled
+import RopeFilled exposing (RopeFilled)
 
 
 {-| A `Rope` is similar to a list, but has fast (constant time) concatenation at both ends, and fast concatenation of two `Rope`s.
@@ -54,11 +55,6 @@ Internally the `Rope` is a tree of lists.
 type Rope a
     = Empty
     | Filled (RopeFilled a)
-
-
-type RopeFilled a
-    = Leaf (ListFilled a)
-    | Node (ListFilled (RopeFilled a))
 
 
 
@@ -83,7 +79,7 @@ empty =
 -}
 singleton : a -> Rope a
 singleton value =
-    Filled (Leaf (ListFilled.singleton value))
+    Filled (RopeFilled.singleton value)
 
 
 {-| Add an element to the front of a list.
@@ -103,12 +99,7 @@ prepend head tail =
             singleton head
 
         Filled tailFilled ->
-            case tailFilled of
-                Leaf list ->
-                    Filled (Leaf (ListFilled.prepend head list))
-
-                Node ropes ->
-                    Filled (Node (ListFilled.prepend (Leaf (ListFilled.singleton head)) ropes))
+            Filled (RopeFilled.prepend head tailFilled)
 
 
 {-| Add an element to the end of a list.
@@ -128,7 +119,7 @@ append last init =
             singleton last
 
         Filled initFilled ->
-            Filled (Node ( initFilled, [ Leaf (ListFilled.singleton last) ] ))
+            Filled (RopeFilled.append last initFilled)
 
 
 {-| Build a rope from a list.
@@ -143,7 +134,7 @@ fromList list =
             Empty
 
         head :: tail ->
-            Filled (Leaf ( head, tail ))
+            Filled (RopeFilled.fromListFilled ( head, tail ))
 
 
 
@@ -234,20 +225,7 @@ foldl f initialAcc rope =
             initialAcc
 
         Filled ropeFilled ->
-            filledFoldl f initialAcc ropeFilled
-
-
-filledFoldl : (a -> b -> b) -> b -> RopeFilled a -> b
-filledFoldl f initialAcc rope =
-    case rope of
-        Leaf list ->
-            ListFilled.foldl f initialAcc list
-
-        Node ropes ->
-            ListFilled.foldl
-                (\subRope acc -> filledFoldl f acc subRope)
-                initialAcc
-                ropes
+            RopeFilled.foldl f initialAcc ropeFilled
 
 
 {-| Reduce a rope from the right.
@@ -273,20 +251,7 @@ foldr f initialAcc rope =
             initialAcc
 
         Filled ropeFilled ->
-            filledFoldr f initialAcc ropeFilled
-
-
-filledFoldr : (a -> b -> b) -> b -> RopeFilled a -> b
-filledFoldr f initialAcc rope =
-    case rope of
-        Leaf list ->
-            ListFilled.foldr f initialAcc list
-
-        Node ropes ->
-            ListFilled.foldr
-                (\childRope childAcc -> filledFoldr f childAcc childRope)
-                initialAcc
-                ropes
+            RopeFilled.foldr f initialAcc ropeFilled
 
 
 {-| Keep elements that satisfy the test.
@@ -351,12 +316,7 @@ toList rope =
             []
 
         Filled ropeFilled ->
-            case ropeFilled of
-                Leaf list ->
-                    ListFilled.toList list
-
-                Node _ ->
-                    foldr (::) [] rope
+            RopeFilled.toList ropeFilled
 
 
 
@@ -376,17 +336,7 @@ length rope =
             0
 
         Filled ropeFilled ->
-            filledLength ropeFilled
-
-
-filledLength : RopeFilled a -> Int
-filledLength rope =
-    case rope of
-        Leaf list ->
-            ListFilled.length list
-
-        Node ropes ->
-            ListFilled.sumMap filledLength ropes
+            RopeFilled.length ropeFilled
 
 
 {-| Reverse a rope.
@@ -402,17 +352,7 @@ reverse rope =
             Empty
 
         Filled ropeFilled ->
-            Filled (filledReverse ropeFilled)
-
-
-filledReverse : RopeFilled a -> RopeFilled a
-filledReverse rope =
-    case rope of
-        Leaf list ->
-            Leaf (ListFilled.reverse list)
-
-        Node ropes ->
-            Node (ListFilled.reverseMap filledReverse ropes)
+            Filled (RopeFilled.reverse ropeFilled)
 
 
 {-| Figure out whether a rope contains a value.
@@ -446,17 +386,7 @@ all isOkay rope =
             True
 
         Filled ropeFilled ->
-            filledAll isOkay ropeFilled
-
-
-filledAll : (a -> Bool) -> RopeFilled a -> Bool
-filledAll isOkay rope =
-    case rope of
-        Leaf list ->
-            ListFilled.allMap isOkay list
-
-        Node ropes ->
-            ListFilled.allMap (\subRope -> filledAll isOkay subRope) ropes
+            RopeFilled.allMap isOkay ropeFilled
 
 
 {-| Determine if any elements satisfy some test.
@@ -478,17 +408,7 @@ any isOkay rope =
             False
 
         Filled ropeFilled ->
-            filledAny isOkay ropeFilled
-
-
-filledAny : (a -> Bool) -> RopeFilled a -> Bool
-filledAny isOkay rope =
-    case rope of
-        Leaf list ->
-            ListFilled.anyMap isOkay list
-
-        Node ropes ->
-            ListFilled.anyMap (\subRope -> filledAny isOkay subRope) ropes
+            RopeFilled.anyMap isOkay ropeFilled
 
 
 {-| Find the maximum element in a non-empty rope.
@@ -507,17 +427,7 @@ maximum rope =
             Nothing
 
         Filled ropeFilled ->
-            Just (filledMaximum ropeFilled)
-
-
-filledMaximum : RopeFilled comparable -> comparable
-filledMaximum rope =
-    case rope of
-        Leaf list ->
-            ListFilled.maximum list
-
-        Node ropes ->
-            ListFilled.foldlFromFirstMap filledMaximum Basics.max ropes
+            Just (RopeFilled.maximum ropeFilled)
 
 
 {-| Find the minimum element in a non-empty rope.
@@ -536,17 +446,7 @@ minimum rope =
             Nothing
 
         Filled ropeFilled ->
-            Just (filledMinimum ropeFilled)
-
-
-filledMinimum : RopeFilled comparable -> comparable
-filledMinimum rope =
-    case rope of
-        Leaf list ->
-            ListFilled.minimum list
-
-        Node ropes ->
-            ListFilled.foldlFromFirstMap filledMinimum Basics.min ropes
+            Just (RopeFilled.minimum ropeFilled)
 
 
 {-| Get the sum of the rope elements.
@@ -568,17 +468,7 @@ sum numbers =
             0
 
         Filled ropeFilled ->
-            filledSum ropeFilled
-
-
-filledSum : RopeFilled number -> number
-filledSum numbers =
-    case numbers of
-        Leaf list ->
-            ListFilled.sum list
-
-        Node ropes ->
-            ListFilled.sumMap filledSum ropes
+            RopeFilled.sum ropeFilled
 
 
 {-| Get the product of the rope elements.
@@ -600,17 +490,7 @@ product numbers =
             1
 
         Filled ropeFilled ->
-            filledProduct ropeFilled
-
-
-filledProduct : RopeFilled number -> number
-filledProduct numbers =
-    case numbers of
-        Leaf list ->
-            ListFilled.product list
-
-        Node ropes ->
-            ListFilled.productMap filledProduct ropes
+            RopeFilled.product ropeFilled
 
 
 
@@ -640,12 +520,7 @@ appendTo early late =
                     early
 
                 Filled lateFilled ->
-                    case lateFilled of
-                        Node ropes ->
-                            Filled (Node (ListFilled.prepend earlyFilled ropes))
-
-                        Leaf _ ->
-                            Filled (Node ( earlyFilled, [ lateFilled ] ))
+                    Filled (RopeFilled.appendTo earlyFilled lateFilled)
 
 
 {-| Put two ropes together, the first after the second.
@@ -685,21 +560,21 @@ concat ropes =
 filledConcat : RopeFilled (Rope a) -> Maybe (RopeFilled a)
 filledConcat ropes =
     case ropes of
-        Leaf list ->
+        RopeFilled.Leaf list ->
             case ListFilled.filterMap filledToJust list of
                 [] ->
                     Nothing
 
                 head :: tail ->
-                    Just (Node ( head, tail ))
+                    Just (RopeFilled.Node ( head, tail ))
 
-        Node children ->
+        RopeFilled.Node children ->
             case ListFilled.filterMap filledConcat children of
                 [] ->
                     Nothing
 
                 head :: tail ->
-                    Just (Node ( head, tail ))
+                    Just (RopeFilled.Node ( head, tail ))
 
 
 {-| Map a given function onto a list and flatten the resulting ropes.
@@ -720,21 +595,21 @@ concatMap f rope =
 filledConcatMap : (a -> Rope b) -> RopeFilled a -> Maybe (RopeFilled b)
 filledConcatMap f rope =
     case rope of
-        Leaf list ->
+        RopeFilled.Leaf list ->
             case ListFilled.filterMap (\el -> filledToJust (f el)) list of
                 [] ->
                     Nothing
 
                 head :: tail ->
-                    Just (Node ( head, tail ))
+                    Just (RopeFilled.Node ( head, tail ))
 
-        Node ropes ->
+        RopeFilled.Node ropes ->
             let
                 ropesConcatenated : List (RopeFilled b)
                 ropesConcatenated =
                     ListFilled.foldr
                         (\subRope acc ->
-                            filledFoldr
+                            RopeFilled.foldr
                                 (\el subAcc ->
                                     case f el of
                                         Empty ->
@@ -754,7 +629,7 @@ filledConcatMap f rope =
                     Nothing
 
                 head :: tail ->
-                    Just (Node ( head, tail ))
+                    Just (RopeFilled.Node ( head, tail ))
 
 
 
